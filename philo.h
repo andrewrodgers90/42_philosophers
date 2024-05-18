@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: arodgers <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/04/12 14:33:47 by arodgers          #+#    #+#             */
-/*   Updated: 2024/04/22 18:42:05 by arodgers         ###   ########.fr       */
+/*   Created: 2024/05/02 14:39:59 by arodgers          #+#    #+#             */
+/*   Updated: 2024/05/18 18:51:39 by arodgers         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,113 +14,84 @@
 # define PHILO_H
 
 # include <stdio.h>
-# include <stdlib.h>
-# include <unistd.h>
-# include <sys/time.h>
 # include <pthread.h>
+# include <unistd.h>
+# include <stdlib.h>
+# include <sys/time.h>
 
-# define RED     "\033[0;31m"
-# define GREEN   "\033[0;32m"
-# define L_BLUE  "\033[0;94m"
-# define RESET   "\033[0m"
-
-typedef struct s_table	t_table;
-
-typedef struct s_fork
-{
-	pthread_mutex_t		fork;
-}	t_fork;
+typedef struct s_data	t_data;
 
 typedef struct s_philo
 {
-	int				philo_id;
+	int				ph_id;
 	int				meal_count;
-	int				full;
-	long			last_meal_time;
-	pthread_mutex_t	philo_mtx;
-	t_fork			*left_fork;
-	t_fork			*right_fork;
-	pthread_t		ph_thread_id;
-	t_table			*table;
+	int				max_meals;
+	int				t_die;
+	int				t_eat;
+	int				t_sleep;
+	long			start_time;
+	long			last_meal;
+	pthread_mutex_t	*fork_one;
+	pthread_mutex_t	*fork_two;
+	pthread_mutex_t	ph_mtx;
+	pthread_t		ph_th;
+	t_data			*data;
 }	t_philo;
 
-struct s_table
+struct s_data
 {
-	int				end_simulation;
-	int				all_threads_ready;
-	int				threads;
-	int				num_of_philos;
-	int				time_to_die;
-	int				time_to_eat;
-	int				time_to_sleep;
+	int				philo_num;
+	int				t_die;
+	int				t_eat;
+	int				t_sleep;
 	int				max_meals;
-	long			simulation_start_time;
-	pthread_mutex_t	table_mtx;
-	pthread_mutex_t	write_mtx;
-	t_fork			*forks;
+	int				philos_full;
+	int				philos_dead;
+	int				end_dinner;
+	long			start_time;
 	t_philo			*philos;
-	pthread_t		monitor;
+	pthread_mutex_t	write_mtx;
+	pthread_mutex_t	table_mtx;
+	pthread_mutex_t	*forks;
 };
 
-// philo_utils.c
+// parse
 
-void	print_error(char *error_message);
-
-// parse.c
+int		parse_args(t_data *data, char **av);
 
 int		ft_overflow_check(int sign);
 
 int		ft_atoi(const char *str);
 
-int		ft_is_whitespace(int c);
+// init
 
-int		check_args(t_table *table);
+void	init_data(t_data *data);
 
-//long	ft_atol(char *str);
+void	init_philos(t_data *data);
 
-int		parse_args(t_table **table, char **av);
+void	init_times(t_data *data, int i);
 
-// init_utils.c
+void	init_forks(t_data *data, int i);
 
-void	init_data(t_table *table);
+// clear_utils
 
-void	init_philos(t_table *table);
+void	clear_table(t_data *data);
 
-void	assign_forks(t_table *tbl, int position);
+// eat_dinner
 
-// dinner.c
+void	eat_dinner(t_data *data);
 
-void	dinner(t_table *table);
+void	*dinner_for_one(void *arg);
 
-void	*dinner_time(void *data);
+void	*group_dinner(void *arg);
 
-void	eat(t_philo *philo);
+int		eat(t_philo *philo);
 
-void	think(t_philo *philo);
+void	eat_meal(t_philo *philo);
 
-void	*dinner_for_one(void *data);
+int		ft_try_lock(pthread_mutex_t *mtx);
 
-// synchro_utils.c
-
-long	all_threads_ready(pthread_mutex_t *mtx, int *threads, int philo_num);
-
-void	synchronise_threads(t_table *table);
-
-void	increase_count(pthread_mutex_t *mtx, int *count);
-
-void	stagger_start_time(t_philo *philo);
-
-// chrono_utils.c
-
-long	get_time(void);
-
-void	exact_usleep(long usec, t_table *table);
-
-// write_utils.c
-
-void	write_state(t_philo *philo, int flag);
-
-// getters_and_setters.c
+// getters_and_setters
 
 void	set_int(pthread_mutex_t *mtx, int *dest, int value);
 
@@ -130,14 +101,26 @@ void	set_long(pthread_mutex_t *mtx, long *dest, long value);
 
 long	get_long(pthread_mutex_t *mtx, long *value);
 
-// monitor.c
+void	increase_count(pthread_mutex_t *mtx, int *count);
 
-void	*monitor_dinner_time(void *data);
+// checks
+
+int		philos_dead(t_philo *philo);
+
+int		philos_full(t_philo *philo);
+
+int		philo_full(t_philo *philo);
 
 int		philo_dead(t_philo *philo);
 
-// clean_utils.c
+// write_utils
 
-void	clean_table(t_table *table);
+void	write_state(t_philo *philo, int flag);
+
+// chrono_utils
+
+long	get_time(void);
+
+long	get_elapsed(t_philo *philo);
 
 #endif

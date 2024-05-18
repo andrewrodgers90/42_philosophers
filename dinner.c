@@ -3,106 +3,109 @@
 /*                                                        :::      ::::::::   */
 /*   dinner.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: arodgers <arodgers@student.42.fr>          +#+  +:+       +#+        */
+/*   By: arodgers <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/04/15 14:49:44 by arodgers          #+#    #+#             */
-/*   Updated: 2024/05/04 14:06:08 by arodgers         ###   ########.fr       */
+/*   Created: 2024/05/02 15:17:43 by arodgers          #+#    #+#             */
+/*   Updated: 2024/05/18 18:56:07 by arodgers         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-void	*dinner_for_one(void *data)
+void	*dinner_for_one(void *arg)
 {
-	t_philo	*philo;
+	t_data	*data;
 
-	philo = (t_philo *)data;
-	set_long(&philo->philo_mtx, &philo->last_meal_time, get_time());
-	increase_count(&philo->table->table_mtx, &philo->table->threads);
-	write_state(philo, 1);
-	//while (philo->table->end_simulation == 0)
-	usleep (philo->table->time_to_die * 1000);
-	write_state(philo, 5);
-	set_int(&philo->table->table_mtx, &philo->table->end_simulation, 1);
+	data = (t_data *)arg;
+	data->start_time = get_time();
+	data->philos[0].start_time = data->start_time;
+	pthread_mutex_lock(data->philos[0].fork_one);
+	write_state(&data->philos[0], 1);
+	usleep(data->t_die * 1000);
+	pthread_mutex_unlock(data->philos[0].fork_one);
+	write_state(&data->philos[0], 5);
 	return (NULL);
 }
 
-void	think(t_philo *philo)
-{
-	int	time_to_think;
-
-	write_state(philo, 4);
-	if (philo->table->num_of_philos % 2 == 0)
-		return ;
-	time_to_think = philo->table->time_to_eat * 2 - philo->table->time_to_sleep;
-	if (time_to_think < 0)
-		time_to_think = 0;
-	exact_usleep(time_to_think * 0.5, philo->table);
-}
-
-void	eat(t_philo *ph)
-{
-	pthread_mutex_lock(&ph->left_fork->fork);
-	write_state(ph, 1);
-	pthread_mutex_lock(&ph->right_fork->fork);
-	write_state(ph, 1);
-	set_long(&ph->philo_mtx, &ph->last_meal_time, get_time());
-	ph->meal_count++;
-	write_state(ph, 2);
-	exact_usleep(ph->table->time_to_eat, ph->table);
-	if ((ph->table->max_meals > 0) && (ph->meal_count == ph->table->max_meals))
-		set_int(&ph->philo_mtx, &ph->full, 1);
-	pthread_mutex_unlock(&ph->left_fork->fork);
-	pthread_mutex_unlock(&ph->right_fork->fork);
-}
-
-void	*dinner_time(void *data)
+void	*group_dinner(void *arg)
 {
 	t_philo	*philo;
+	int		res;
 
-	philo = (t_philo *)data;
-	synchronise_threads(philo->table);
-	set_long(&philo->philo_mtx, &philo->last_meal_time, get_time());
-	increase_count(&philo->table->table_mtx, &philo->table->threads);
-	stagger_start_time(philo);
-	while (philo->table->end_simulation == 0)
+	philo = (t_philo *)arg;
+	philo->last_meal = philo->start_time;
+	while (philos_dead(philo) == 0 && philos_full(philo) == 0)
 	{
-		if (get_int(&philo->philo_mtx, &philo->full) == 1)
-			break ;
-		eat(philo);
+		if (philo->ph_id % 2 == 0)
+			usleep(philo->t_eat * 1000);
+		res = eat(philo);
+		if (res)
+		{
+			write_state(philo, 5);
+			set_int(&philo->data->table_mtx, &philo->data->philos_dead, 1);
+		}
 		write_state(philo, 3);
-		exact_usleep(philo->table->time_to_sleep, philo->table);
-		think(philo);
+		usleep(philo->t_sleep * 1000);
+		write_state(philo, 4);
+		usleep((philo->t_eat * 2 - philo->t_sleep) * 1000);
 	}
-	set_int(&philo->table->table_mtx, &philo->table->end_simulation, 1);
 	return (NULL);
 }
 
-void	dinner(t_table *table)
+void	eat_meal(t_philo *philo)
+{
+	write_state(philo, 1);
+	write_state(philo, 2);
+	philo->last_meal = get_time();
+	usleep(philo->t_eat * 1000);
+	pthread_mutex_unlock(philo->fork_two);
+	pthread_mutex_unlock(philo->fork_one);
+	increase_count(&philo->ph_mtx, &philo->meal_count);
+	if (philo->max_meals > 0 && philo_full(philo))
+	{
+		increase_count(&philo->data->table_mtx, &philo->data->philos_full);
+		if (philos_full(philo))
+			return ;
+	}
+	set_long(&philo->ph_mtx, &philo->last_meal, get_time());
+}
+
+int	eat(t_philo *philo)
+{
+	if (philo_dead(philo))
+		return (1);
+	if (ft_try_lock(philo->fork_one) != 0)
+		return (0);
+	write_state(philo, 1);
+	if (ft_try_lock(philo->fork_two) != 0)
+	{
+		pthread_mutex_unlock(philo->fork_one);
+		return (0);
+	}
+	else
+		eat_meal(philo);
+	return (0);
+}
+
+void	eat_dinner(t_data *data)
 {
 	int		i;
 	t_philo	*philo;
 
 	i = -1;
-	if (table->num_of_philos == 1)
-	{
-		philo = &table->philos[0];
-		pthread_create(&philo->ph_thread_id, NULL, dinner_for_one, philo);
-	}
+	if (data->philo_num == 1)
+		pthread_create(&data->philos[0].ph_th, NULL, dinner_for_one, data);
 	else
 	{
-		while (++i < table->num_of_philos)
+		while (++i < data->philo_num)
 		{
-			philo = &table->philos[i];
-			pthread_create(&philo->ph_thread_id, NULL, dinner_time, philo);
+			philo = &data->philos[i];
+			set_long(&data->table_mtx, &data->start_time, get_time());
+			set_long(&philo->ph_mtx, &philo->start_time, data->start_time);
+			pthread_create(&philo->ph_th, NULL, group_dinner, philo);
 		}
 	}
-	pthread_create(&table->monitor, NULL, monitor_dinner_time, table);
-	set_long(&table->table_mtx, &table->simulation_start_time, get_time());
-	set_int(&table->table_mtx, &table->all_threads_ready, 1);
 	i = -1;
-	while (++i < table->num_of_philos)
-		pthread_join(table->philos[i].ph_thread_id, NULL);
-	set_int(&table->table_mtx, &table->end_simulation, 1);
-	pthread_join(table->monitor, NULL);
+	while (++i < data->philo_num)
+		pthread_join(data->philos[i].ph_th, NULL);
 }

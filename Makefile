@@ -5,8 +5,8 @@
 #                                                     +:+ +:+         +:+      #
 #    By: arodgers <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2024/04/12 14:30:18 by arodgers          #+#    #+#              #
-#    Updated: 2024/04/21 17:22:12 by arodgers         ###   ########.fr        #
+#    Created: 2024/05/02 15:04:46 by arodgers          #+#    #+#              #
+#    Updated: 2024/05/18 18:56:28 by arodgers         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,7 @@ CFLAGS = -Wall -Werror -Wextra
 
 HDR    = philo.h
 NAME   = philo
-SRCS   = philo.c philo_utils.c parse.c init_utils.c getters_and_setters.c synchro_utils.c chrono_utils.c write_utils.c dinner.c monitor.c clean_utils.c
+SRCS   = philo.c parse.c init.c clean_utils.c dinner.c getters_and_setters.c chrono_utils.c checks.c utils.c
 
 OBJS   = $(SRCS:.c=.o)
 

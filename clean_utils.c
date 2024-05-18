@@ -3,37 +3,28 @@
 /*                                                        :::      ::::::::   */
 /*   clean_utils.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: arodgers <arodgers@student.42.fr>          +#+  +:+       +#+        */
+/*   By: arodgers <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/04/17 19:05:06 by arodgers          #+#    #+#             */
-/*   Updated: 2024/05/02 14:37:32 by arodgers         ###   ########.fr       */
+/*   Created: 2024/05/02 17:57:29 by arodgers          #+#    #+#             */
+/*   Updated: 2024/05/18 16:24:36 by arodgers         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-void	clean_table(t_table *table)
+void	clear_table(t_data *data)
 {
-	t_philo	*philo;
-	t_fork	*fork;
-	int		i;
+	int	i;
 
 	i = 0;
-	while (i < table->num_of_philos)
+	while (i < data->philo_num)
 	{
-		philo = &table->philos[i];
-		pthread_mutex_destroy(&philo->philo_mtx);
+		pthread_mutex_destroy(&data->forks[i]);
 		i++;
 	}
-	i = 0;
-	while (i < table->num_of_philos)
-	{
-		fork = &table->forks[i];
-		pthread_mutex_destroy(&fork->fork);
-		i++;
-	}
-	pthread_mutex_destroy(&table->write_mtx);
-	pthread_mutex_destroy(&table->table_mtx);
-	free(table->philos);
-	free(table->forks);
+	pthread_mutex_destroy(&data->write_mtx);
+	pthread_mutex_destroy(&data->table_mtx);
+	free(data->philos);
+	free(data->forks);
+	free(data);
 }
