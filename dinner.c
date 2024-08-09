@@ -6,7 +6,7 @@
 /*   By: arodgers <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 15:17:43 by arodgers          #+#    #+#             */
-/*   Updated: 2024/05/18 18:56:07 by arodgers         ###   ########.fr       */
+/*   Updated: 2024/08/09 18:04:33 by arodgers         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,10 @@ void	*dinner_for_one(void *arg)
 	data->start_time = get_time();
 	data->philos[0].start_time = data->start_time;
 	pthread_mutex_lock(data->philos[0].fork_one);
-	write_state(&data->philos[0], 1);
+	write_state(&data->philos[0], TAKE_FORK);
 	usleep(data->t_die * 1000);
 	pthread_mutex_unlock(data->philos[0].fork_one);
-	write_state(&data->philos[0], 5);
+	write_state(&data->philos[0], DEAD);
 	return (NULL);
 }
 
@@ -34,19 +34,21 @@ void	*group_dinner(void *arg)
 
 	philo = (t_philo *)arg;
 	philo->last_meal = philo->start_time;
-	while (philos_dead(philo) == 0 && philos_full(philo) == 0)
+	while (philos_dead(philo) == 0)
 	{
 		if (philo->ph_id % 2 == 0)
-			usleep(philo->t_eat * 1000);
+			usleep(philo->t_sleep * 1000);
 		res = eat(philo);
 		if (res)
 		{
-			write_state(philo, 5);
+			write_state(philo, DEAD);
 			set_int(&philo->data->table_mtx, &philo->data->philos_dead, 1);
 		}
-		write_state(philo, 3);
+		if (philos_full(philo))
+			break ;
+		write_state(philo, SLEEP);
 		usleep(philo->t_sleep * 1000);
-		write_state(philo, 4);
+		write_state(philo, THINK);
 		usleep((philo->t_eat * 2 - philo->t_sleep) * 1000);
 	}
 	return (NULL);
@@ -54,8 +56,8 @@ void	*group_dinner(void *arg)
 
 void	eat_meal(t_philo *philo)
 {
-	write_state(philo, 1);
-	write_state(philo, 2);
+	write_state(philo, TAKE_FORK);
+	write_state(philo, EAT);
 	philo->last_meal = get_time();
 	usleep(philo->t_eat * 1000);
 	pthread_mutex_unlock(philo->fork_two);
@@ -76,7 +78,7 @@ int	eat(t_philo *philo)
 		return (1);
 	if (ft_try_lock(philo->fork_one) != 0)
 		return (0);
-	write_state(philo, 1);
+	write_state(philo, TAKE_FORK);
 	if (ft_try_lock(philo->fork_two) != 0)
 	{
 		pthread_mutex_unlock(philo->fork_one);
