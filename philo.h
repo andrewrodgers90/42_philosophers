@@ -6,7 +6,7 @@
 /*   By: arodgers <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 14:39:59 by arodgers          #+#    #+#             */
-/*   Updated: 2024/05/18 18:51:39 by arodgers         ###   ########.fr       */
+/*   Updated: 2024/08/09 18:04:55 by arodgers         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,15 @@
 # include <unistd.h>
 # include <stdlib.h>
 # include <sys/time.h>
+
+typedef enum state
+{
+	THINK,
+	SLEEP,
+	TAKE_FORK,
+	EAT,
+	DEAD,
+}	t_state;
 
 typedef struct s_data	t_data;
 
@@ -115,12 +124,10 @@ int		philo_dead(t_philo *philo);
 
 // write_utils
 
-void	write_state(t_philo *philo, int flag);
+void	write_state(t_philo *philo, t_state state);
 
 // chrono_utils
 
 long	get_time(void);
 
 long	get_elapsed(t_philo *philo);
-
-#endif
